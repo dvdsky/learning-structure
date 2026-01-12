@@ -1,17 +1,26 @@
 let isPanning =false
 
+const gui =new lil.GUI();
+
 class PanZoomStage {
+
   constructor(staID) {
     this.stage = new Konva.Stage({
       container: staID,
-      width: 2*window.innerWidth,
-      height: 2*window.innerHeight,
+      width: window.innerWidth,
+      height: window.innerHeight,
     });
 
+    this.virtualWidth = 50000;
+    this.virtualHeight = 50000;
+
     this.bg= new Konva.Rect({
-      width:this.stage.width(),
-      height:this.stage.height(),
+      width:this.virtualWidth,
+      height:this.virtualHeight,
       listening:true,
+      fill: '#665252ff',
+      stroke: '#999',
+      strokeWidth:2,
     })
 
     this.layer = new Konva.Layer();
@@ -25,8 +34,7 @@ class PanZoomStage {
     this.bg.moveToBottom();
     this.layer.add(this.world);
 
-    this.virtualWidth = 50000;
-    this.virtualHeight = 50000;
+    
 
     this.initDrag();
     this.initZoom();
@@ -35,15 +43,16 @@ class PanZoomStage {
 
   initDrag() {
     this.world.on("dragmove", () => {
-      if (!isPanning) return
       const scale = this.world.scaleX();
       const pos = this.world.position();
 
       const minX = this.stage.width() - this.virtualWidth * scale;
       const minY = this.stage.height() - this.virtualHeight * scale;
+      const maxX = 0;
+      const maxY = 0;
 
-      pos.x = Math.min(0, Math.max(minX, pos.x));
-      pos.y = Math.min(0, Math.max(minY, pos.y));
+      pos.x = Math.min(maxX, Math.max(minX, pos.x));
+      pos.y = Math.min(maxY, Math.max(minY, pos.y));
 
       this.world.position(pos);
       this.layer.batchDraw();
@@ -61,9 +70,10 @@ class PanZoomStage {
       if (!pointer) return;
 
       const mousePointTo = {
-        x: (pointer.x - this.world.x()) / oldScale,
-        y: (pointer.y - this.world.y()) / oldScale,
+        x: (this.world.x()-pointer.x) / oldScale,
+        y: (this.world.y()-pointer.y) / oldScale,
       };
+
 
       let newScale =
         e.evt.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy;
@@ -73,9 +83,17 @@ class PanZoomStage {
       this.world.scale({ x: newScale, y: newScale });
 
       const newPos = {
-        x: pointer.x - mousePointTo.x * newScale,
-        y: pointer.y - mousePointTo.y * newScale,
+        x: pointer.x + mousePointTo.x * newScale,
+        y: pointer.y + mousePointTo.y * newScale,
       };
+
+      const minX = this.stage.width() - this.virtualWidth * scale;
+      const minY = this.stage.height() - this.virtualHeight * scale;
+      const maxX = 0;
+      const maxY = 0;
+
+      newPos.x = Math.min(maxX, Math.max(minX, newPos.x));
+      newPos.y = Math.min(maxY, Math.max(minY, newPos.y));
 
       this.world.position(newPos);
       this.layer.batchDraw();
@@ -106,6 +124,12 @@ const STORAGE_KEY = "learning-structure-v1";
 function saveAll(nodesData) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(nodesData));
 }
+
+//边界约束
+function clamp(){
+  
+}
+
 
 
 //创建节点
@@ -310,6 +334,12 @@ const layer = app.layer;
 stage.on("mousedown",(e)=>{
   isPanning = (e.target===bg)
 })
+
+stage.on("mousedown", (e) => {
+  if (e.target === stage) {
+    world.startDrag();
+  }
+});
 stage.on("mouseup",(e)=>{
   isPanning = false
 })
